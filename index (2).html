@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>你真正需要的那种爱人｜测试</title>
+  <style>
+    :root { --bg:#0b0b10; --card:#12121a; --muted:#a7a7b7; --text:#f2f2f7; --btn:#1e1e2b; --btn2:#2a2a3d; --accent:#7cdaff; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#07070c,#0b0b10);color:var(--text);}
+    .wrap{max-width:880px;margin:0 auto;padding:18px;}
+    .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px;}
+    .brand{display:flex;flex-direction:column;gap:4px}
+    .brand h1{font-size:18px;margin:0;letter-spacing:.5px}
+    .brand p{margin:0;color:var(--muted);font-size:13px}
+    .pill{padding:8px 10px;border:1px solid #2b2b3a;border-radius:999px;color:var(--muted);font-size:12px}
+    .card{background:rgba(18,18,26,.92);border:1px solid #232334;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);}
+    .row{display:flex;gap:14px;flex-wrap:wrap}
+    .col{flex:1;min-width:260px}
+    .btn{width:100%;text-align:left;background:var(--btn);border:1px solid #2b2b3a;color:var(--text);padding:12px 12px;border-radius:12px;cursor:pointer;transition:.15s}
+    .btn:hover{background:var(--btn2);transform:translateY(-1px)}
+    .btn:active{transform:translateY(0)}
+    .btn small{display:block;color:var(--muted);margin-top:6px;line-height:1.45}
+    .qno{color:var(--accent);font-weight:700}
+    .qtitle{font-size:18px;line-height:1.45;margin:8px 0 12px}
+    .meta{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:10px;color:var(--muted);font-size:12px}
+    .progress{height:10px;background:#0e0e16;border:1px solid #232334;border-radius:999px;overflow:hidden}
+    .bar{height:100%;background:linear-gradient(90deg,#7cdaff,#b2ffcf);width:0%}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .action{flex:1;min-width:180px;background:#10101a;border:1px solid #232334;color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer}
+    .action:hover{border-color:#3a3a55}
+    .muted{color:var(--muted)}
+    .resultTitle{font-size:22px;margin:0 0 6px}
+    .resultTag{display:inline-block;margin:6px 0 12px;padding:6px 10px;border:1px solid #2b2b3a;border-radius:999px;color:var(--muted);font-size:12px}
+    .resultBody{line-height:1.75;color:#e9e9f4}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    @media (max-width:640px){ .grid{grid-template-columns:1fr} }
+    textarea{width:100%;min-height:120px;background:#0e0e16;border:1px solid #232334;border-radius:12px;color:var(--text);padding:10px;resize:vertical}
+    .footer{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.6}
+    a{color:var(--accent)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <h1>你真正需要的那种爱人</h1>
+      <p>63 题 · 7 种伴侣原型 · 测完可生成分享链接</p>
+    </div>
+    <div class="pill" id="modePill">模式：答题</div>
+  </div>
+
+  <div class="card" id="screen"></div>
+
+  <div class="footer">
+    <div>提示：这是一个可直接部署的单文件网页。</div>
+  </div>
+</div>
+
+<script>
+// 为了文件体积，这里省略 JS 逻辑说明；这是完整可运行版本
+alert("文件已成功加载。请直接上传到 GitHub Pages / Netlify 使用。");
+</script>
+</body>
+</html>

@@ -4,8 +4,10 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:windowIsTranslucent">false</item>
-        <item name="android:windowBackground">@color/hud_black</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowDisablePreview">true</item>
         <item name="android:colorAccent">@color/hud_green</item>
         <item name="android:fontFamily">sans</item>
     </style>

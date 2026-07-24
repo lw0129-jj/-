@@ -1,4 +1,4 @@
-name: Build Leqi Write 1.4.3 Clean
+name: Build Leqi Write 1.4.4 Relay Fix
 
 on:
   pull_request:
@@ -25,8 +25,6 @@ jobs:
           for p in java_root.rglob('*.java'):
               s = p.read_text(encoding='utf-8')
               s = re.sub(r'^package\s+[^;]+;', 'package com.leqi.write;', s, count=1, flags=re.M)
-              s = s.replace('gpt-4o-mini', 'gpt-5-nano')
-              s = s.replace('gpt-5.6-luna', 'gpt-5.6-terra')
               if p.name == 'ApiClient.java':
                   marker = 'private static final String API_KEY = "'
                   i = s.index(marker) + len(marker)
@@ -56,8 +54,8 @@ jobs:
           s = re.sub(r'applicationId = "[^"]+"', 'applicationId = "com.leqi.write"', s)
           s = re.sub(r'minSdk = \d+', 'minSdk = 23', s)
           s = re.sub(r'targetSdk = \d+', 'targetSdk = 28', s)
-          s = re.sub(r'versionCode = \d+', 'versionCode = 143', s)
-          s = re.sub(r'versionName = "[^"]+"', 'versionName = "1.4.3"', s)
+          s = re.sub(r'versionCode = \d+', 'versionCode = 144', s)
+          s = re.sub(r'versionName = "[^"]+"', 'versionName = "1.4.4"', s)
           s = s.replace('JavaVersion.VERSION_17', 'JavaVersion.VERSION_1_8')
           gradle.write_text(s, encoding='utf-8')
 
@@ -126,17 +124,21 @@ jobs:
         working-directory: leqi-essay-v15
         run: gradle :app:assembleDebug --stacktrace
 
-      - name: Verify package, entry class, and compatibility
+      - name: Verify package, camera flow, and relay
         shell: bash
         run: |
           APK=leqi-essay-v15/app/build/outputs/apk/debug/app-debug.apk
           $ANDROID_HOME/build-tools/34.0.0/aapt dump badging "$APK" | tee badging.txt
-          grep -q "package: name='com.leqi.write' versionCode='143' versionName='1.4.3'" badging.txt
+          grep -q "package: name='com.leqi.write' versionCode='144' versionName='1.4.4'" badging.txt
           grep -q "launchable-activity: name='com.leqi.write.MainActivity'" badging.txt
           rm -rf verify-apk && mkdir verify-apk
           unzip -q "$APK" -d verify-apk
           strings verify-apk/classes*.dex > dex-strings.txt
           grep -q 'Lcom/leqi/write/MainActivity;' dex-strings.txt
+          grep -q 'lensmind-glasses.bhdlwzjj.chatgpt.site/api/analyze' dex-strings.txt
+          grep -q 'OAI-Sites-Authorization' dex-strings.txt
+          grep -q 'SurfaceTexture' dex-strings.txt
+          ! grep -q 'api.openai.com' dex-strings.txt
           ! grep -q 'Lcom/lensmind/essay/' dex-strings.txt
           ! grep -q 'Lcom/leqi/essay/' dex-strings.txt
           ! grep -Eq 'WindowInsets|WindowInsetsController|setDecorFitsSystemWindows|getInsetsController|setAutoSizeTextTypeUniformWithConfiguration' dex-strings.txt
@@ -144,6 +146,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: leqi-write-v143-clean-apk
+          name: leqi-write-v144-relay-fix-apk
           path: leqi-essay-v15/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

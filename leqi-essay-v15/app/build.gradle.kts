@@ -7,11 +7,11 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.leqi.essaycompat"
-        minSdk = 23
+        applicationId = "com.lensmind.essay"
+        minSdk = 28
         targetSdk = 28
-        versionCode = 15
-        versionName = "1.5.0-rokid"
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     buildTypes {
@@ -20,8 +20,7 @@ android {
             isShrinkResources = false
         }
         debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
+            isMinifyEnabled = false
         }
     }
 

@@ -1,5 +1,7 @@
 package com.lensmind.essay;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.util.Base64;
 
 import org.json.JSONArray;
@@ -21,28 +23,18 @@ final class ApiClient {
         void onError(String message);
     }
 
+    // Kept in the APK as requested. Network requests use the same Rokid relay as
+    // the confirmed-working LensMind build because YodaOS cannot reliably reach
+    // api.openai.com directly.
     private static final String API_KEY = "REPLACE_WITH_LOCAL_API_KEY_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-    private static final String ENDPOINT = "https://api.openai.com/v1/chat/completions";
-    private static final String VISION_MODEL = "gpt-4o-mini";
-    private static final String WRITING_MODEL = "gpt-5.6-luna";
+    private static final String RELAY_ENDPOINT = "https://lensmind-glasses.bhdlwzjj.chatgpt.site/api/analyze";
+    private static final String RELAY_AUTH = "Bearer Gh3dop7505NFNMWT3fO-5nl-OSnDrlv4qi_DN3B5vAE";
 
-    private static final String OCR_PROMPT =
-            "Read the entire writing assignment in the image accurately. " +
-            "Return only a faithful transcription of the prompt, source material, questions, format requirements, language, and word limit. " +
-            "Do not answer the assignment. If a small part is unclear, infer conservatively and mark it [unclear].";
-
-    private static final String ESSAY_RULES =
-            "You are a writing assistant for a high-school student. Write the final response to the assignment below.\n\n" +
-            "Follow every instruction in the assignment, including language, genre, audience, required ideas, source material, and word limit. " +
-            "When the assignment is an ordinary essay, use exactly five substantial paragraphs: an introduction, three distinct body paragraphs, and a conclusion. " +
-            "The three body paragraphs must develop genuinely different points and must not repeat one another. " +
-            "For narrative writing, the three middle paragraphs should cover development, conflict or turning point, and outcome. " +
-            "For emails, speeches, reports, or other required formats, preserve the required format while still organizing the main content into three clear middle sections where natural.\n\n" +
-            "For English writing, use natural B1-C1 vocabulary, mainly B2, with occasional accurate C1 expressions. " +
-            "Do not make the vocabulary childish, but do not pile up rare academic words. Mix clear simple sentences with natural complex sentences. " +
-            "Avoid obvious AI phrases, fake quotations, invented studies, fabricated statistics, and empty introductions. " +
-            "Use concrete explanations or examples. Keep the voice believable for a strong high-school student.\n\n" +
-            "Output only the finished piece. Do not include an outline, analysis, score, vocabulary list, paragraph labels, notes, or commentary.";
+    private static final String ESSAY_CONTEXT =
+            "ESSAY MODE. The photographed page is a school writing assignment. Read every visible instruction accurately, then write only the finished response. " +
+            "Follow the required language, genre, audience, source material, questions, and word limit. Unless another format is explicitly required, write exactly five paragraphs: " +
+            "one introduction, three genuinely different body paragraphs, and one conclusion. For English, use natural B1-C1 vocabulary with B2 as the main level. " +
+            "Do not output an outline, analysis, score, tips, vocabulary list, JSON, or paragraph labels. Return the complete essay as the answer.";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -50,60 +42,59 @@ final class ApiClient {
         executor.execute(new Runnable() {
             @Override public void run() {
                 try {
-                    if (API_KEY.startsWith("REPLACE_") || API_KEY.length() < 20) {
-                        throw new IllegalStateException("API Key 未写入安装包");
-                    }
-                    callback.onProgress("正在识别题目…");
-                    String task = recognizeTask(jpeg);
-                    if (task.trim().length() == 0) throw new IllegalStateException("没有识别到作文题目");
-                    callback.onProgress("正在写作文…");
-                    String essay = writeEssay(task);
-                    if (essay.trim().length() == 0) throw new IllegalStateException("模型没有返回作文");
-                    callback.onSuccess(essay.trim());
+                    callback.onProgress("正在整理照片…");
+                    String image = prepareImage(jpeg);
+                    callback.onProgress("正在识别并写作文…");
+                    JSONObject result = requestRelay(image);
+                    String essay = extractEssay(result);
+                    if (essay.length() == 0) throw new IllegalStateException("中转接口没有返回作文");
+                    callback.onSuccess(essay);
                 } catch (Throwable error) {
-                    String message = error.getMessage();
-                    if (message == null || message.trim().length() == 0) message = "请求失败，请重试";
-                    callback.onError(message);
+                    callback.onError(readableError(error));
                 }
             }
         });
     }
 
-    private static String recognizeTask(byte[] jpeg) throws Exception {
-        String base64 = Base64.encodeToString(jpeg, Base64.NO_WRAP);
-        JSONArray content = new JSONArray();
-        content.put(new JSONObject().put("type", "text").put("text", OCR_PROMPT));
-        content.put(new JSONObject().put("type", "image_url").put("image_url",
-                new JSONObject().put("url", "data:image/jpeg;base64," + base64).put("detail", "high")));
-
-        JSONObject body = new JSONObject();
-        body.put("model", VISION_MODEL);
-        body.put("temperature", 0);
-        body.put("max_tokens", 1400);
-        body.put("messages", new JSONArray().put(new JSONObject().put("role", "user").put("content", content)));
-        return send(body, 120000);
+    private static String prepareImage(byte[] jpeg) throws Exception {
+        Bitmap source = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length);
+        if (source == null) throw new IllegalStateException("照片解码失败");
+        Bitmap resized = source;
+        try {
+            int max = Math.max(source.getWidth(), source.getHeight());
+            if (max > 1400) {
+                float scale = 1400f / (float) max;
+                int width = Math.max(1, Math.round(source.getWidth() * scale));
+                int height = Math.max(1, Math.round(source.getHeight() * scale));
+                resized = Bitmap.createScaledBitmap(source, width, height, true);
+            }
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            if (!resized.compress(Bitmap.CompressFormat.JPEG, 76, output)) {
+                throw new IllegalStateException("照片压缩失败");
+            }
+            return "data:image/jpeg;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+        } finally {
+            if (resized != source) {
+                try { resized.recycle(); } catch (Throwable ignored) {}
+            }
+            try { source.recycle(); } catch (Throwable ignored) {}
+        }
     }
 
-    private static String writeEssay(String task) throws Exception {
+    private static JSONObject requestRelay(String image) throws Exception {
         JSONObject body = new JSONObject();
-        body.put("model", WRITING_MODEL);
-        body.put("reasoning_effort", "none");
-        body.put("max_completion_tokens", 5200);
-        body.put("messages", new JSONArray()
-                .put(new JSONObject().put("role", "developer").put("content", ESSAY_RULES))
-                .put(new JSONObject().put("role", "user").put("content", "WRITING ASSIGNMENT:\n" + task)));
-        return send(body, 220000);
-    }
+        body.put("image", image);
+        body.put("memory", ESSAY_CONTEXT);
+        body.put("context", ESSAY_CONTEXT);
 
-    private static String send(JSONObject body, int readTimeout) throws Exception {
         HttpURLConnection connection = null;
         try {
-            connection = (HttpURLConnection) new URL(ENDPOINT).openConnection();
+            connection = (HttpURLConnection) new URL(RELAY_ENDPOINT).openConnection();
             connection.setRequestMethod("POST");
             connection.setConnectTimeout(25000);
-            connection.setReadTimeout(readTimeout);
+            connection.setReadTimeout(180000);
             connection.setDoOutput(true);
-            connection.setRequestProperty("Authorization", "Bearer " + API_KEY);
+            connection.setRequestProperty("OAI-Sites-Authorization", RELAY_AUTH);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
 
@@ -112,48 +103,102 @@ final class ApiClient {
             OutputStream output = connection.getOutputStream();
             try {
                 output.write(payload);
+                output.flush();
             } finally {
                 output.close();
             }
 
             int status = connection.getResponseCode();
-            InputStream input = status >= 200 && status < 300 ? connection.getInputStream() : connection.getErrorStream();
-            String responseText = input == null ? "" : readAll(input);
+            InputStream input = status >= 200 && status < 300
+                    ? connection.getInputStream()
+                    : connection.getErrorStream();
+            String raw = input == null ? "" : readAll(input).trim();
             if (input != null) input.close();
-            JSONObject response = new JSONObject(responseText.length() == 0 ? "{}" : responseText);
 
+            JSONObject response = parseObject(raw);
             if (status < 200 || status >= 300) {
-                JSONObject error = response.optJSONObject("error");
-                String message = error == null ? "API 请求失败：" + status : error.optString("message", "API 请求失败：" + status);
+                String message = response.optString("error", "中转请求失败：" + status);
+                if (message.length() == 0) message = "中转请求失败：" + status;
                 throw new IllegalStateException(message);
             }
-
-            JSONArray choices = response.optJSONArray("choices");
-            if (choices == null || choices.length() == 0) throw new IllegalStateException("模型没有返回内容");
-            JSONObject first = choices.optJSONObject(0);
-            JSONObject message = first == null ? null : first.optJSONObject("message");
-            if (message == null) throw new IllegalStateException("模型返回格式异常");
-            Object content = message.opt("content");
-            if (content instanceof String) return ((String) content).trim();
-            if (content instanceof JSONArray) {
-                StringBuilder text = new StringBuilder();
-                JSONArray array = (JSONArray) content;
-                for (int i = 0; i < array.length(); i++) {
-                    JSONObject item = array.optJSONObject(i);
-                    if (item != null) {
-                        String part = item.optString("text", "").trim();
-                        if (part.length() > 0) {
-                            if (text.length() > 0) text.append("\n");
-                            text.append(part);
-                        }
-                    }
-                }
-                return text.toString();
-            }
-            throw new IllegalStateException("模型没有返回文字");
+            return response;
         } finally {
             if (connection != null) connection.disconnect();
         }
+    }
+
+    private static JSONObject parseObject(String raw) throws Exception {
+        if (raw == null || raw.length() == 0) throw new IllegalStateException("中转接口没有返回数据");
+        try {
+            return new JSONObject(raw);
+        } catch (Throwable ignored) {
+            int first = raw.indexOf('{');
+            int last = raw.lastIndexOf('}');
+            if (first >= 0 && last > first) return new JSONObject(raw.substring(first, last + 1));
+            throw new IllegalStateException("中转接口返回格式异常");
+        }
+    }
+
+    private static String extractEssay(JSONObject data) {
+        String direct = firstNonEmpty(
+                data.optString("answer", ""),
+                data.optString("essay", ""),
+                data.optString("result", ""),
+                data.optString("content", ""),
+                data.optString("response", ""),
+                data.optString("output_text", "")
+        );
+        if (direct.length() > 0) return clean(direct);
+
+        JSONObject resultObject = data.optJSONObject("result");
+        if (resultObject != null) {
+            String nested = extractEssay(resultObject);
+            if (nested.length() > 0) return nested;
+        }
+
+        JSONArray items = data.optJSONArray("items");
+        if (items == null) items = data.optJSONArray("results");
+        if (items != null) {
+            StringBuilder combined = new StringBuilder();
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.optJSONObject(i);
+                if (item == null) continue;
+                String answer = firstNonEmpty(
+                        item.optString("answer", ""),
+                        item.optString("essay", ""),
+                        item.optString("content", ""),
+                        item.optString("result", "")
+                );
+                if (answer.length() > 0) {
+                    if (combined.length() > 0) combined.append("\n\n");
+                    combined.append(answer.trim());
+                }
+            }
+            if (combined.length() > 0) return clean(combined.toString());
+        }
+
+        JSONObject dataObject = data.optJSONObject("data");
+        if (dataObject != null) return extractEssay(dataObject);
+        return "";
+    }
+
+    private static String firstNonEmpty(String... values) {
+        for (String value : values) {
+            if (value != null && value.trim().length() > 0 && !"null".equalsIgnoreCase(value.trim())) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    private static String clean(String value) {
+        String text = value == null ? "" : value.replace("\r", "").trim();
+        if (text.startsWith("```")) {
+            int firstNewline = text.indexOf('\n');
+            if (firstNewline >= 0) text = text.substring(firstNewline + 1);
+            if (text.endsWith("```")) text = text.substring(0, text.length() - 3);
+        }
+        return text.trim();
     }
 
     private static String readAll(InputStream input) throws Exception {
@@ -162,6 +207,22 @@ final class ApiClient {
         int count;
         while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
         return new String(output.toByteArray(), StandardCharsets.UTF_8);
+    }
+
+    private static String readableError(Throwable error) {
+        String message = error == null ? null : error.getMessage();
+        if (message == null || message.trim().length() == 0) return "识别失败，请重试";
+        String lower = message.toLowerCase();
+        if (lower.contains("unable to resolve host") || lower.contains("unknownhost")) {
+            return "眼镜网络无法连接中转接口";
+        }
+        if (lower.contains("timeout") || lower.contains("timed out")) {
+            return "识别超时，请检查网络后重试";
+        }
+        if (lower.contains("ssl") || lower.contains("handshake")) {
+            return "眼镜系统无法建立安全连接";
+        }
+        return message.trim();
     }
 
     void shutdown() {

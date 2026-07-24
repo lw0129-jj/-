@@ -1,4 +1,4 @@
-package com.leqi.essaycompat;
+package com.lensmind.essay;
 
 import java.util.ArrayList;
 import java.util.List;

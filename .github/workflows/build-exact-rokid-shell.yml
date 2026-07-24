@@ -1,0 +1,89 @@
+name: Build Exact Rokid Shell APK
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Convert source to exact LensMind package
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('leqi-essay-v15')
+          for p in root.rglob('*.java'):
+              s = p.read_text(encoding='utf-8')
+              s = s.replace('package com.leqi.essaycompat;', 'package com.lensmind.rokid;')
+              if p.name == 'ApiClient.java':
+                  start = 'private static final String API_KEY = "'
+                  i = s.index(start) + len(start)
+                  j = s.index('";', i)
+                  s = s[:i] + ('K' * 164) + s[j:]
+              p.write_text(s, encoding='utf-8')
+          p = root / 'app/build.gradle.kts'
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('namespace = "com.leqi.essaycompat"', 'namespace = "com.lensmind.rokid"')
+          s = s.replace('applicationId = "com.lensmind.essay"', 'applicationId = "com.lensmind.rokid"')
+          p.write_text(s, encoding='utf-8')
+          manifest = root / 'app/src/main/AndroidManifest.xml'
+          manifest.write_text('''<?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.CAMERA" />
+              <uses-feature android:name="android.hardware.camera" android:required="true" />
+              <application
+                  android:allowBackup="false"
+                  android:debuggable="true"
+                  android:extractNativeLibs="false"
+                  android:label="LensMind"
+                  android:theme="@style/AppTheme"
+                  android:usesCleartextTraffic="false">
+                  <activity
+                      android:name="com.lensmind.rokid.MainActivity"
+                      android:configChanges="orientation|screenSize"
+                      android:exported="true"
+                      android:screenOrientation="portrait">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          ''', encoding='utf-8')
+          PY
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build APK
+        working-directory: leqi-essay-v15
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Upload exact package APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: exact-rokid-package-apk
+          path: leqi-essay-v15/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

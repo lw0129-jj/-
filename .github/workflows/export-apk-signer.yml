@@ -1,0 +1,21 @@
+name: Export APK Signer
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download signer
+        run: curl -L --fail -o uber-apk-signer-1.3.0.jar https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar
+      - name: Upload signer
+        uses: actions/upload-artifact@v4
+        with:
+          name: uber-apk-signer
+          path: uber-apk-signer-1.3.0.jar
+          if-no-files-found: error

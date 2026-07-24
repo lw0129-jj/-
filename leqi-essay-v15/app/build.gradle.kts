@@ -3,15 +3,16 @@ plugins {
 }
 
 android {
-    namespace = "com.leqi.essaycompat"
-    compileSdk = 34
+    namespace = "com.lensmind.rokid"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.lensmind.essay"
+        applicationId = "com.lensmind.rokid"
         minSdk = 28
         targetSdk = 28
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 6
+        versionName = "1.0.5"
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -27,6 +28,12 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    packaging {
+        dex {
+            useLegacyPackaging = false
+        }
     }
 
     lint {

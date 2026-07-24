@@ -1,0 +1,25 @@
+name: Export Dexdump
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+      - name: Install build tools
+        run: sdkmanager "build-tools;34.0.0"
+      - name: Locate dexdump
+        run: |
+          find "$ANDROID_HOME" -type f -name dexdump -print
+          cp "$ANDROID_HOME/build-tools/34.0.0/dexdump" ./dexdump
+          chmod +x ./dexdump
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dexdump-linux
+          path: dexdump
+          if-no-files-found: error

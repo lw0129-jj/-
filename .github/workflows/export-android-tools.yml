@@ -1,0 +1,29 @@
+name: Export Android Tools
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "build-tools;34.0.0"
+      - name: Collect tools
+        run: |
+          mkdir android-tools
+          cp "$ANDROID_HOME/build-tools/34.0.0/aapt" android-tools/
+          cp "$ANDROID_HOME/build-tools/34.0.0/aapt2" android-tools/
+          cp "$ANDROID_HOME/build-tools/34.0.0/apksigner" android-tools/
+          cp "$ANDROID_HOME/build-tools/34.0.0/zipalign" android-tools/
+          cp "$ANDROID_HOME/build-tools/34.0.0/lib/apksigner.jar" android-tools/
+          find "$ANDROID_HOME" -name 'libc++.so' -type f -print -exec cp {} android-tools/ \;
+          ldd "$ANDROID_HOME/build-tools/34.0.0/aapt" > android-tools/aapt-ldd.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-tools
+          path: android-tools
+          if-no-files-found: error

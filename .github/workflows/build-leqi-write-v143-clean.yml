@@ -1,0 +1,139 @@
+name: Build Leqi Write 1.4.3 Clean
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make API 23-compatible clean source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('leqi-essay-v15')
+          java_root = root / 'app/src/main/java'
+
+          for p in java_root.rglob('*.java'):
+              s = p.read_text(encoding='utf-8')
+              s = s.replace('package com.leqi.essaycompat;', 'package com.leqi.write;')
+              s = s.replace('gpt-4o-mini', 'gpt-5-nano')
+              s = s.replace('gpt-5.6-luna', 'gpt-5.6-terra')
+              if p.name == 'ApiClient.java':
+                  marker = 'private static final String API_KEY = "'
+                  i = s.index(marker) + len(marker)
+                  j = s.index('";', i)
+                  s = s[:i] + ('K' * 164) + s[j:]
+              if p.name == 'MainActivity.java':
+                  s = s.replace('window.setStatusBarColor(Color.TRANSPARENT);', 'window.setStatusBarColor(Color.BLACK);')
+                  s = s.replace('window.setNavigationBarColor(Color.TRANSPARENT);', 'window.setNavigationBarColor(Color.BLACK);')
+                  s = s.replace('root.setBackgroundColor(Color.TRANSPARENT);', 'root.setBackgroundColor(Color.BLACK);')
+                  # Hard fail if modern startup APIs accidentally reappear.
+                  forbidden = [
+                      'WindowInsets',
+                      'WindowInsetsController',
+                      'setDecorFitsSystemWindows',
+                      'getInsetsController',
+                      'setAutoSizeTextTypeUniformWithConfiguration',
+                  ]
+                  for token in forbidden:
+                      if token in s:
+                          raise SystemExit('Forbidden startup API still present: ' + token)
+              p.write_text(s, encoding='utf-8')
+
+          gradle = root / 'app/build.gradle.kts'
+          s = gradle.read_text(encoding='utf-8')
+          s = re.sub(r'namespace = "[^"]+"', 'namespace = "com.leqi.write"', s)
+          s = re.sub(r'applicationId = "[^"]+"', 'applicationId = "com.leqi.write"', s)
+          s = re.sub(r'minSdk = \d+', 'minSdk = 23', s)
+          s = re.sub(r'targetSdk = \d+', 'targetSdk = 28', s)
+          s = re.sub(r'versionCode = \d+', 'versionCode = 143', s)
+          s = re.sub(r'versionName = "[^"]+"', 'versionName = "1.4.3"', s)
+          s = s.replace('JavaVersion.VERSION_17', 'JavaVersion.VERSION_1_8')
+          gradle.write_text(s, encoding='utf-8')
+
+          manifest = root / 'app/src/main/AndroidManifest.xml'
+          manifest.write_text('''<?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.CAMERA" />
+              <uses-feature android:name="android.hardware.camera" android:required="true" />
+              <application
+                  android:allowBackup="false"
+                  android:debuggable="true"
+                  android:hardwareAccelerated="true"
+                  android:label="乐奇作文"
+                  android:supportsRtl="false"
+                  android:theme="@style/AppTheme"
+                  android:usesCleartextTraffic="false">
+                  <activity
+                      android:name="com.leqi.write.MainActivity"
+                      android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
+                      android:exported="true"
+                      android:screenOrientation="portrait">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          ''', encoding='utf-8')
+
+          styles = root / 'app/src/main/res/values/styles.xml'
+          styles.write_text('''<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+                  <item name="android:windowNoTitle">true</item>
+                  <item name="android:windowFullscreen">true</item>
+                  <item name="android:windowActionModeOverlay">true</item>
+                  <item name="android:windowIsTranslucent">false</item>
+                  <item name="android:windowBackground">@android:color/black</item>
+                  <item name="android:colorAccent">@color/hud_green</item>
+                  <item name="android:fontFamily">sans</item>
+              </style>
+          </resources>
+          ''', encoding='utf-8')
+          PY
+
+      - name: Set up Java 17 build host
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build clean APK
+        working-directory: leqi-essay-v15
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Verify package metadata
+        run: |
+          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging leqi-essay-v15/app/build/outputs/apk/debug/app-debug.apk | tee badging.txt
+          grep -q "package: name='com.leqi.write' versionCode='143' versionName='1.4.3'" badging.txt
+          grep -q "launchable-activity: name='com.leqi.write.MainActivity'" badging.txt
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: leqi-write-v143-clean-apk
+          path: leqi-essay-v15/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

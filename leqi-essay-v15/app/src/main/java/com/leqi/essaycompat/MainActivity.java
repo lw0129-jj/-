@@ -47,7 +47,7 @@ public final class MainActivity extends Activity {
             apiClient = new ApiClient();
             showIdle();
         } catch (Throwable error) {
-            showEmergency(error);
+            showEmergency();
         }
     }
 
@@ -56,18 +56,22 @@ public final class MainActivity extends Activity {
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        window.setStatusBarColor(Color.BLACK);
-        window.setNavigationBarColor(Color.BLACK);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        window.setStatusBarColor(Color.TRANSPARENT);
+        window.setNavigationBarColor(Color.TRANSPARENT);
         window.getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN
                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         );
     }
 
     private void buildUi() {
         root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        root.setBackgroundColor(Color.TRANSPARENT);
         root.setFocusable(true);
         root.setFocusableInTouchMode(true);
 
@@ -244,9 +248,9 @@ public final class MainActivity extends Activity {
         hint.setText("双击返回");
     }
 
-    private void showEmergency(Throwable error) {
+    private void showEmergency() {
         TextView emergency = new TextView(this);
-        emergency.setBackgroundColor(Color.BLACK);
+        emergency.setBackgroundColor(Color.TRANSPARENT);
         emergency.setTextColor(GREEN);
         emergency.setGravity(Gravity.CENTER);
         emergency.setTextSize(18);

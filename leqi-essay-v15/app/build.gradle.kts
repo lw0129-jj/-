@@ -3,15 +3,15 @@ plugins {
 }
 
 android {
-    namespace = "com.leqi.essaycompat"
-    compileSdk = 34
+    namespace = "com.lensmind.essay"
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.lensmind.essay"
         minSdk = 28
         targetSdk = 28
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.2"
     }
 
     buildTypes {

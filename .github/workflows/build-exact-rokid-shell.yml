@@ -21,6 +21,7 @@ jobs:
           for p in root.rglob('*.java'):
               s = p.read_text(encoding='utf-8')
               s = s.replace('package com.leqi.essaycompat;', 'package com.lensmind.rokid;')
+              s = s.replace('package com.lensmind.essay;', 'package com.lensmind.rokid;')
               if p.name == 'ApiClient.java':
                   start = 'private static final String API_KEY = "'
                   i = s.index(start) + len(start)
@@ -30,7 +31,9 @@ jobs:
           p = root / 'app/build.gradle.kts'
           s = p.read_text(encoding='utf-8')
           s = s.replace('namespace = "com.leqi.essaycompat"', 'namespace = "com.lensmind.rokid"')
+          s = s.replace('namespace = "com.lensmind.essay"', 'namespace = "com.lensmind.rokid"')
           s = s.replace('applicationId = "com.lensmind.essay"', 'applicationId = "com.lensmind.rokid"')
+          s = s.replace('applicationId = "com.leqi.essaycompat"', 'applicationId = "com.lensmind.rokid"')
           p.write_text(s, encoding='utf-8')
           manifest = root / 'app/src/main/AndroidManifest.xml'
           manifest.write_text('''<?xml version="1.0" encoding="utf-8"?>

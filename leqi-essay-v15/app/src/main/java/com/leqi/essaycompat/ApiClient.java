@@ -1,4 +1,4 @@
-package com.leqi.essaycompat;
+package com.lensmind.rokid;
 
 import android.util.Base64;
 

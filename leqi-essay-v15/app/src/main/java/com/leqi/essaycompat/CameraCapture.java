@@ -1,4 +1,4 @@
-package com.leqi.essaycompat;
+package com.lensmind.essay;
 
 import android.Manifest;
 import android.app.Activity;

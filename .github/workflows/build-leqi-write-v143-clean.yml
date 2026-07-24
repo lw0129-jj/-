@@ -24,7 +24,7 @@ jobs:
 
           for p in java_root.rglob('*.java'):
               s = p.read_text(encoding='utf-8')
-              s = s.replace('package com.leqi.essaycompat;', 'package com.leqi.write;')
+              s = re.sub(r'^package\s+[^;]+;', 'package com.leqi.write;', s, count=1, flags=re.M)
               s = s.replace('gpt-4o-mini', 'gpt-5-nano')
               s = s.replace('gpt-5.6-luna', 'gpt-5.6-terra')
               if p.name == 'ApiClient.java':
@@ -36,7 +36,6 @@ jobs:
                   s = s.replace('window.setStatusBarColor(Color.TRANSPARENT);', 'window.setStatusBarColor(Color.BLACK);')
                   s = s.replace('window.setNavigationBarColor(Color.TRANSPARENT);', 'window.setNavigationBarColor(Color.BLACK);')
                   s = s.replace('root.setBackgroundColor(Color.TRANSPARENT);', 'root.setBackgroundColor(Color.BLACK);')
-                  # Hard fail if modern startup APIs accidentally reappear.
                   forbidden = [
                       'WindowInsets',
                       'WindowInsetsController',
@@ -47,6 +46,8 @@ jobs:
                   for token in forbidden:
                       if token in s:
                           raise SystemExit('Forbidden startup API still present: ' + token)
+              if not s.startswith('package com.leqi.write;'):
+                  raise SystemExit('Package rewrite failed for ' + str(p))
               p.write_text(s, encoding='utf-8')
 
           gradle = root / 'app/build.gradle.kts'
@@ -125,11 +126,20 @@ jobs:
         working-directory: leqi-essay-v15
         run: gradle :app:assembleDebug --stacktrace
 
-      - name: Verify package metadata
+      - name: Verify package, entry class, and compatibility
+        shell: bash
         run: |
-          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging leqi-essay-v15/app/build/outputs/apk/debug/app-debug.apk | tee badging.txt
+          APK=leqi-essay-v15/app/build/outputs/apk/debug/app-debug.apk
+          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging "$APK" | tee badging.txt
           grep -q "package: name='com.leqi.write' versionCode='143' versionName='1.4.3'" badging.txt
           grep -q "launchable-activity: name='com.leqi.write.MainActivity'" badging.txt
+          rm -rf verify-apk && mkdir verify-apk
+          unzip -q "$APK" -d verify-apk
+          strings verify-apk/classes*.dex > dex-strings.txt
+          grep -q 'Lcom/leqi/write/MainActivity;' dex-strings.txt
+          ! grep -q 'Lcom/lensmind/essay/' dex-strings.txt
+          ! grep -q 'Lcom/leqi/essay/' dex-strings.txt
+          ! grep -Eq 'WindowInsets|WindowInsetsController|setDecorFitsSystemWindows|getInsetsController|setAutoSizeTextTypeUniformWithConfiguration' dex-strings.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

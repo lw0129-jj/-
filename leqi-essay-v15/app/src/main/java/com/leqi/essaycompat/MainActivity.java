@@ -1,4 +1,4 @@
-package com.leqi.essaycompat;
+package com.lensmind.rokid;
 
 import android.Manifest;
 import android.app.Activity;
@@ -21,7 +21,7 @@ import java.util.List;
 
 public final class MainActivity extends Activity {
     private static final int CAMERA_PERMISSION_REQUEST = 41;
-    private static final int GREEN = Color.rgb(57, 255, 20);
+    private static final int GREEN = Color.rgb(98, 255, 192);
 
     private enum State { IDLE, CAPTURING, REQUESTING, SHOWING, ERROR }
 
@@ -56,22 +56,18 @@ public final class MainActivity extends Activity {
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.TRANSPARENT);
+        window.setStatusBarColor(Color.BLACK);
+        window.setNavigationBarColor(Color.rgb(7, 10, 9));
         window.getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN
                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         );
     }
 
     private void buildUi() {
         root = new FrameLayout(this);
-        root.setBackgroundColor(Color.TRANSPARENT);
+        root.setBackgroundColor(Color.BLACK);
         root.setFocusable(true);
         root.setFocusableInTouchMode(true);
 
@@ -250,11 +246,11 @@ public final class MainActivity extends Activity {
 
     private void showEmergency() {
         TextView emergency = new TextView(this);
-        emergency.setBackgroundColor(Color.TRANSPARENT);
+        emergency.setBackgroundColor(Color.BLACK);
         emergency.setTextColor(GREEN);
         emergency.setGravity(Gravity.CENTER);
         emergency.setTextSize(18);
-        emergency.setText("乐奇作文已启动\n界面初始化失败，请重新打开");
+        emergency.setText("LensMind Essay 已启动\n界面初始化失败，请重新打开");
         setContentView(emergency);
     }
 
